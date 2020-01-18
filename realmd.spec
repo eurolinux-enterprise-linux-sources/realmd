@@ -1,12 +1,14 @@
 Name:		realmd
 Version:	0.14.6
-Release:	2%{?dist}
+Release:	6%{?dist}
 Summary:	Kerberos realm enrollment service
 License:	LGPLv2+
 URL:		http://cgit.freedesktop.org/realmd/realmd/
 Source0:	http://www.freedesktop.org/software/realmd/releases/realmd-%{version}.tar.gz
 Patch0:		ipa-packages.patch
 Patch1:		oddjob-start.patch
+Patch2:		safe-printf.patch
+Patch3:		missing-fqname.patch
 
 BuildRequires:	intltool pkgconfig
 BuildRequires:	gettext-devel
@@ -18,6 +20,7 @@ BuildRequires:	krb5-devel
 BuildRequires:	systemd-devel
 BuildRequires:	libxslt
 BuildRequires:	xmlto
+BuildRequires:	automake
 
 Requires:	authconfig
 Requires:	oddjob-mkhomedir
@@ -40,6 +43,8 @@ applications that use %{name}.
 %setup -q
 %patch0 -p1
 %patch1 -p1
+%patch2 -p1
+%patch3 -p1
 
 %build
 %configure --disable-silent-rules
@@ -74,6 +79,19 @@ make install DESTDIR=%{buildroot}
 %doc %{_datadir}/doc/realmd/
 
 %changelog
+* Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 0.14.6-6
+- Mass rebuild 2014-01-24
+
+* Fri Jan 10 2014 Stef Walter <stefw@redhat.com> - 0.14.6-5
+- Don't crash when full_name_format is not in sssd.conf [#1051033]
+  This is a regression from a prior update.
+
+* Tue Jan 07 2014 Stef Walter <stefw@redhat.com> - 0.14.6-4
+- Fix full_name_format printf(3) related failure [#1048087]
+
+* Fri Dec 27 2013 Daniel Mach <dmach@redhat.com> - 0.14.6-3
+- Mass rebuild 2013-12-27
+
 * Fri Sep 20 2013 Stef Walter <stefw@redhat.com> - 0.14.6-2
 - Start oddjob after joining a domain [#967023]
 
