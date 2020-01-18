@@ -1,0 +1,405 @@
+<?xml version='1.0'?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<refentry id="realm">
+
+<refentryinfo>
+	<title>realm</title>
+	<productname>realmd</productname>
+	<authorgroup>
+		<author>
+			<contrib>Maintainer</contrib>
+			<firstname>Stef</firstname>
+			<surname>Walter</surname>
+			<email>stef@thewalter.net</email>
+		</author>
+	</authorgroup>
+</refentryinfo>
+
+<refmeta>
+	<refentrytitle>realm</refentrytitle>
+	<manvolnum>8</manvolnum>
+	<refmiscinfo class="manual">User Commands</refmiscinfo>
+</refmeta>
+
+<refnamediv>
+	<refname>realm</refname>
+	<refpurpose>Manage enrollment in realms</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+	<cmdsynopsis>
+		<command>realm discover</command> <arg choice="opt">realm-name</arg>
+	</cmdsynopsis>
+	<cmdsynopsis>
+		<command>realm join</command> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg>
+	</cmdsynopsis>
+	<cmdsynopsis>
+		<command>realm leave</command> <arg choice="opt">-U user</arg> <arg choice="opt">realm-name</arg>
+	</cmdsynopsis>
+	<cmdsynopsis>
+		<command>realm list</command>
+	</cmdsynopsis>
+	<cmdsynopsis>
+		<command>realm permit</command> <arg choice="opt">-ax</arg> <arg choice="opt">-R realm</arg> <arg choice="req" rep="repeat">user@domain</arg>
+	</cmdsynopsis>
+	<cmdsynopsis>
+		<command>realm deny</command> <arg choice="plain">-a</arg> <arg choice="opt">-R realm</arg>
+	</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1>
+	<title>Description</title>
+	<para><command>realm</command> is a command line tool that
+	can be used to manage enrollment in kerberos realms, like Active
+	Directory domains or IPA domains.</para>
+
+	<para>See the various sub commands below. The following global options
+	can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--install=/path</option></term>
+			<listitem><para>Run in install mode. This makes realmd
+			chroot into the specified directory and place files in
+			appropriate locations for use during an installer. No
+			packages will be installed or services will be started
+			when running in this mode.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--unattended</option></term>
+			<listitem><para>Run in unattended mode without prompting
+			for input.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--verbose, -v</option></term>
+			<listitem><para>Display verbose diagnostics while doing
+			running commands.</para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>Discover</title>
+
+	<para>Discover a realm and its capabilities.</para>
+
+	<informalexample>
+<programlisting>
+$ realm discover
+</programlisting>
+<programlisting>
+$ realm discover domain.example.com
+</programlisting>
+	</informalexample>
+
+	<para>After discovering a realm,
+	its name, type and capabilities are displayed.</para>
+
+	<para>If no domain is specified, then the domain assigned through
+	DHCP is used as a default.</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--all</option></term>
+			<listitem><para>Show all discovered realms (in various
+			configurations).</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--client-software=xxx</option></term>
+			<listitem><para>Only discover realms for which we can
+			use the given client software. Possible values include
+			<replaceable>sssd</replaceable> or
+			<replaceable>winbind</replaceable>.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--server-software=xxx</option></term>
+			<listitem><para>Only discover realms which run the
+			given server software. Possible values include
+			<replaceable>active-directory</replaceable> or
+			<replaceable>ipa</replaceable>.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--membership-software=xxx</option></term>
+			<listitem><para>Only discover realms for which the given
+			membership software can be used to subsequently perform enrollment.
+			Possible values include <replaceable>samba</replaceable> or
+			<replaceable>adcli</replaceable>. </para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>Join</title>
+
+	<para>Configure the local machine for use with a realm.</para>
+
+	<informalexample>
+<programlisting>
+$ realm join domain.example.com
+</programlisting>
+<programlisting>
+$ realm join --user=admin --computer-ou=OU=Special domain.example.com
+</programlisting>
+	</informalexample>
+
+	<para>The realm is first discovered, as we would with the
+	<option>discover</option> command. If no domain is specified, then the
+	domain assigned through DHCP is used as a default.</para>
+
+	<para>After a successful join, the computer will be in a state where
+	it is able to resolve remote user and group names from the realm.
+	For kerberos realms, a computer account and host keytab is created.</para>
+
+	<para>Joining arbitrary kerberos realms is not supported. The realm
+	must have a supported mechanism for joining from a client machine, such
+	as Active Directory or IPA.</para>
+
+	<para>Unless a <literal>--user</literal> is explicitly specified, an
+	automatic join is attempted first. Automatic joins require pre-configuration
+	on the domain side, and may not be supported by all domains.</para>
+
+	<para>Note that the <literal>--user </literal>, <literal>--no-password</literal>,
+	and <literal>--one-time-password </literal> options are mutually exclusive.
+	At most one of them can be specified.</para>
+
+	<para>It is generally possible to use kerberos credentials to perform
+	a join operation. Use the <command>kinit</command> command to
+	acquire credentials prior to starting the join. Do not specify the
+	<option>--user</option> argument, the user will be selected automatically
+	from the credential cache. The <command>realm</command> respects the
+	<literal>KRB5_CCACHE</literal> environment variable, but uses the default
+	kerberos credential cache if it's not present. Not all types of servers
+	can be joined using kerberos credentials, some (like IPA) insist on
+	prompting for a password.</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--user=xxx</option></term>
+			<listitem><para>The user name to be used to authenticate
+			with when joining the machine to the realm. You will
+			be prompted for a password.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--computer-ou=OU=xxx</option></term>
+			<listitem><para>The distinguished name of an organizational
+			unit to create the computer account. The exact format
+			of the distinguished name depends on the client software
+			and membership software. You can usually omit the root
+			DSE portion of distinguished name. This is an Active
+			Directory specific option.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--no-password</option></term>
+			<listitem><para>Perform the join automatically without
+			a password.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--one-time-password=xxxx</option></term>
+			<listitem><para>Perform the join using a one time password
+			specified on the command line. This is not possible with
+			all types of realms.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--client-software=xxx</option></term>
+			<listitem><para>Only join realms for which we can
+			use the given client software. Possible values include
+			<replaceable>sssd</replaceable> or
+			<replaceable>winbind</replaceable>. Not all values are
+			supported for all realms. By default the client software
+			is automatically selected.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--server-software=xxx</option></term>
+			<listitem><para>Only join realms for run the
+			given server software. Possible values include
+			<replaceable>active-directory</replaceable> or
+			<replaceable>ipa</replaceable>.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--membership-software=xxx</option></term>
+			<listitem><para>The software to use when joining to the
+			realm. Possible values include <replaceable>samba</replaceable> or
+			<replaceable>adcli</replaceable>. Not all values are
+			supported for all realms. By default the membership software
+			is automatically selected.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--user-principal=<parameter>host/name@REALM</parameter></option></term>
+			<listitem><para>Set the userPrincipalName field of the
+			computer account to this kerberos principal. If you omit
+			the value for this option, then a principal will be set
+			in the form of <literal>host/shortname@REALM</literal></para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>Leave</title>
+
+	<para>Deconfigure the local machine for use with a realm.</para>
+
+	<informalexample>
+<programlisting>
+$ realm leave
+</programlisting>
+<programlisting>
+$ realm leave domain.example.com
+</programlisting>
+	</informalexample>
+
+	<para>If no realm name is specified, then the first configured realm
+	will be used.</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--client-software=xxx</option></term>
+			<listitem><para>Only leave the realm which is using
+			the given client software. Possible values include
+			<replaceable>sssd</replaceable> or
+			<replaceable>winbind</replaceable>.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--server-software=xxx</option></term>
+			<listitem><para>Only leave the realm which is using the
+			given server software. Possible values include
+			<replaceable>active-directory</replaceable> or
+			<replaceable>ipa</replaceable>.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--remove</option></term>
+			<listitem><para>Remove or disable computer account from the
+			directory while leaving the realm. This will usually prompt
+			for a pasword.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--user</option></term>
+			<listitem><para>The user name to be used to authenticate
+			with when leaving the realm. You will be prompted for a
+			password. Implies <option>--remove</option>.</para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>List</title>
+
+	<para>List all the discovered and configured realms.</para>
+
+	<informalexample>
+<programlisting>
+$ realm list
+</programlisting>
+	</informalexample>
+
+	<para>By default, realms that have been discovered, but not configured (using
+	the <option>join</option> command), are not displayed. Also, by default, the
+	list of realm details displayed is verbose. The options below can be used to
+	change this default behavior</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--all</option></term>
+			<listitem><para>Show all discovered realms (whether or not
+			they have been configured). </para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--name-only</option></term>
+			<listitem><para>Display only realm names (as opposed to
+			verbose output).</para></listitem>
+		</varlistentry>
+	</variablelist>
+</refsect1>
+
+<refsect1>
+	<title>Permit</title>
+
+	<para>Permit local login by users of the realm.</para>
+
+	<informalexample>
+<programlisting>
+$ realm permit --all
+$ realm permit user@example.com
+$ realm permit DOMAIN\\User2
+$ realm permit --withdraw user@example.com
+</programlisting>
+	</informalexample>
+
+	<para>The current login policy and format of the user names can be seen
+	 by using the <command>realm list</command> command.</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--all, -a</option></term>
+			<listitem><para>Permit logins using realm accounts on
+			the local machine according to the realm policy.This
+			usually defaults to allowing any realm user to log
+			in.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--groups, -g</option></term>
+			<listitem><para>Treat the specified names as groups
+			rather than user login names. Permit login by users in
+			the specified groups.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--realm, -R</option></term>
+			<listitem><para>Specify the of the realm to change login
+			policy for.</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--withdraw, -x</option></term>
+			<listitem><para>Remove a login from the list of realm
+			accounts permitted to log into the machine.</para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+<refsect1>
+	<title>Deny</title>
+
+	<para>Deny local login by realm accounts.</para>
+
+	<informalexample>
+<programlisting>
+$ realm deny --all
+</programlisting>
+	</informalexample>
+
+	<para>This command prevents realm accounts from logging into the local
+	machine. Use <command>realm permit</command> to restrict logins to
+	specific accounts.</para>
+
+	<para>The following options can be used:</para>
+
+	<variablelist>
+		<varlistentry>
+			<term><option>--all, -a</option></term>
+			<listitem><para>This option should be specified</para></listitem>
+		</varlistentry>
+		<varlistentry>
+			<term><option>--realm, -R</option></term>
+			<listitem><para>Specify the name of the realm to deny
+			users login to.</para></listitem>
+		</varlistentry>
+	</variablelist>
+
+</refsect1>
+
+</refentry>

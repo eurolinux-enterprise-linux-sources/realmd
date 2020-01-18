@@ -1,0 +1,13 @@
+diff --git a/service/realmd-redhat.conf b/service/realmd-redhat.conf
+index da2de55..856b36d 100644
+--- a/service/realmd-redhat.conf
++++ b/service/realmd-redhat.conf
+@@ -20,7 +20,7 @@ oddjob-mkhomedir = /usr/libexec/oddjob/mkhomedir
+ adcli = /usr/sbin/adcli
+ 
+ [ipa-packages]
+-freeipa-client = /usr/sbin/ipa-client-install
++ipa-client = /usr/sbin/ipa-client-install
+ 
+ [commands]
+ winbind-enable-logins = /usr/bin/sh -c "/usr/sbin/authconfig --update --enablewinbind --enablewinbindauth --enablemkhomedir --nostart && /usr/bin/systemctl enable oddjobd.service"
