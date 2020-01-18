@@ -1,0 +1,65 @@
+From 5482e0e3b4e59de0c30b37e7e3ed8b54eff1c493 Mon Sep 17 00:00:00 2001
+From: Andrew Austin <aaustin@one.verizon.com>
+Date: Fri, 22 Apr 2016 00:08:43 +0000
+Subject: [PATCH 3/3] Add documentation for computer-name setting.
+
+https://bugs.freedesktop.org/show_bug.cgi?id=93739
+
+Signed-off-by: Stef Walter <stefw@redhat.com>
+ * Fixed up indentation
+---
+ doc/manual/realmd-guide-active-directory.xml |  5 ++++-
+ doc/manual/realmd.conf.xml                   | 20 ++++++++++++++++++++
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/doc/manual/realmd-guide-active-directory.xml b/doc/manual/realmd-guide-active-directory.xml
+index 9b4535d..362cf94 100644
+--- a/doc/manual/realmd-guide-active-directory.xml
++++ b/doc/manual/realmd-guide-active-directory.xml
+@@ -166,7 +166,10 @@ $ <command>getent passwd DOMAIN\Administrator</command>
+ 		<para>The join operation will create or update a computer account
+ 		in the domain. If you wish to specify a specific organizational unit
+ 		where this account is created, you can use the
+-		<link linkend="realmd-conf-active-directory"><option>computer-ou</option> setting</link>.</para>
++		<link linkend="realmd-conf-active-directory"><option>computer-ou</option> setting</link>.
++	        Additonally, you can override the default name for the computer account with the
++		<link linkend="realmd-conf-active-directory"><option>computer-name</option>
++		setting</link>.</para>
+ 
+ 		<para>Specify the <option>--user</option> to choose a different
+ 		user name than the default <literal>Administrator</literal> user.</para>
+diff --git a/doc/manual/realmd.conf.xml b/doc/manual/realmd.conf.xml
+index d9703f6..f8c87b9 100644
+--- a/doc/manual/realmd.conf.xml
++++ b/doc/manual/realmd.conf.xml
+@@ -321,7 +321,27 @@ computer-ou = OU=Linux Computers,DC=domain,DC=example,DC=com
+ 		create a computer account at a specific OU.</para>
+ 	</listitem>
+ 	</varlistentry>
++	<varlistentry>
++	<term><option>computer-name</option></term>
++	<listitem>
++		<para>This option only applied to Active Directory realms. Specify this
++		option to override the default name used when creating the computer
++		account. The system's FQDN will still be saved in the dNSHostName attribute.</para>
++		<informalexample>
++<programlisting language="js">
++[domain.example.com]
++computer-name = SERVER01
++</programlisting>
++		</informalexample>
++
++		<para>Specify the name as a string of 15 or fewer characters that is
++		a valid NetBIOS computer name.</para>
+ 
++		<para>It is also possible to use the <option>--computer-name</option>
++		argument of the <command>realm</command> command to override the default
++		computer account name.</para>
++	</listitem>
++	</varlistentry>
+ 	<varlistentry>
+ 	<term><option>user-prinicpal</option></term>
+ 	<listitem>
+-- 
+2.7.4
+

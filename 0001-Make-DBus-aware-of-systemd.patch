@@ -1,0 +1,53 @@
+From 03f949a0b394ab954fc68f33e092dc0bb1fec406 Mon Sep 17 00:00:00 2001
+From: Sumit Bose <sbose@redhat.com>
+Date: Tue, 28 Jun 2016 14:41:01 +0200
+Subject: [PATCH] Make DBus aware of systemd
+
+---
+ Makefile.am                            | 1 +
+ configure.ac                           | 7 +++++++
+ dbus/org.freedesktop.realmd.service.in | 1 +
+ 3 files changed, 9 insertions(+)
+
+diff --git a/Makefile.am b/Makefile.am
+index 52de3dc..c81f048 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -49,6 +49,7 @@ SED_SUBST = sed \
+ 	-e 's,[@]abs_srcdir[@],$(abs_srcdir),g' \
+ 	-e 's,[@]srcdir[@],$(srcdir),g' \
+ 	-e 's,[@]privatedir[@],$(privatedir),g' \
++	-e 's,[@]dbus_systemd_service[@],$(dbus_systemd_service),g' \
+ 	-e 's,[@]PACKAGE[@],$(PACKAGE),g' \
+ 	-e 's,[@]VERSION[@],$(VERSION),g' \
+ 	$(NULL)
+diff --git a/configure.ac b/configure.ac
+index 032cdaa..0376887 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -110,6 +110,13 @@ fi
+ SYSTEMD_UNIT_DIR="$with_systemd_unit_dir"
+ AC_SUBST(SYSTEMD_UNIT_DIR)
+ AM_CONDITIONAL(WITH_SYSTEMD, [test -n "$with_systemd_unit_dir"])
++
++dbus_systemd_service=""
++if test -n "$with_systemd_unit_dir"; then
++	dbus_systemd_service="SystemdService=realmd.service"
++fi
++AC_SUBST(dbus_systemd_service)
++
+ AC_MSG_RESULT($with_systemd_unit_dir)
+ 
+ AC_ARG_WITH(systemd-journal,
+diff --git a/dbus/org.freedesktop.realmd.service.in b/dbus/org.freedesktop.realmd.service.in
+index 834e23f..51132f6 100644
+--- a/dbus/org.freedesktop.realmd.service.in
++++ b/dbus/org.freedesktop.realmd.service.in
+@@ -2,3 +2,4 @@
+ Name=org.freedesktop.realmd
+ Exec=@privatedir@/realmd
+ User=root
++@dbus_systemd_service@
+-- 
+2.7.4
+

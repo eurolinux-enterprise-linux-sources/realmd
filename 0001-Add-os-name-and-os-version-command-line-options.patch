@@ -1,0 +1,182 @@
+From ca6684a68d2a9887c2e06e58a7fdfa3d327c8052 Mon Sep 17 00:00:00 2001
+From: Sumit Bose <sbose@redhat.com>
+Date: Tue, 28 Jun 2016 18:14:09 +0200
+Subject: [PATCH] Add os-name and os-version command line options
+
+---
+ dbus/realm-dbus-constants.h  |  2 ++
+ doc/manual/realm.xml         | 12 ++++++++++++
+ doc/manual/realmd.conf.xml   |  5 +++++
+ service/realm-adcli-enroll.c |  4 ++--
+ service/realm-options.c      | 18 ++++++++++++++++++
+ service/realm-options.h      |  3 +++
+ service/realm-samba-enroll.c |  4 ++--
+ tools/realm-join.c           |  8 ++++++++
+ 8 files changed, 52 insertions(+), 4 deletions(-)
+
+diff --git a/dbus/realm-dbus-constants.h b/dbus/realm-dbus-constants.h
+index 3a67a00..9cd30ef 100644
+--- a/dbus/realm-dbus-constants.h
++++ b/dbus/realm-dbus-constants.h
+@@ -67,6 +67,8 @@ G_BEGIN_DECLS
+ #define   REALM_DBUS_OPTION_USER_PRINCIPAL         "user-principal"
+ #define   REALM_DBUS_OPTION_MANAGE_SYSTEM          "manage-system"
+ #define   REALM_DBUS_OPTION_COMPUTER_NAME          "computer-name"
++#define   REALM_DBUS_OPTION_OS_NAME                "os-name"
++#define   REALM_DBUS_OPTION_OS_VERSION             "os-version"
+ 
+ #define   REALM_DBUS_IDENTIFIER_ACTIVE_DIRECTORY   "active-directory"
+ #define   REALM_DBUS_IDENTIFIER_WINBIND            "winbind"
+diff --git a/doc/manual/realm.xml b/doc/manual/realm.xml
+index baa0d8c..6724d80 100644
+--- a/doc/manual/realm.xml
++++ b/doc/manual/realm.xml
+@@ -243,6 +243,18 @@ $ realm join --user=admin --computer-ou=OU=Special domain.example.com
+ 			the value for this option, then a principal will be set
+ 			in the form of <literal>host/shortname@REALM</literal></para></listitem>
+ 		</varlistentry>
++		<varlistentry>
++			<term><option>--os-name=xxx</option></term>
++			<listitem><para>The name of the operation system of the
++			client. When joining an AD domain the value is store in
++			the matching AD attribute.</para></listitem>
++		</varlistentry>
++		<varlistentry>
++			<term><option>--os-version=xxx</option></term>
++			<listitem><para>The version of the operation system of the
++			client. When joining an AD domain the value is store in
++			the matching AD attribute.</para></listitem>
++		</varlistentry>
+ 	</variablelist>
+ 
+ </refsect1>
+diff --git a/doc/manual/realmd.conf.xml b/doc/manual/realmd.conf.xml
+index f8c87b9..7853230 100644
+--- a/doc/manual/realmd.conf.xml
++++ b/doc/manual/realmd.conf.xml
+@@ -149,6 +149,11 @@ domain.example.com
+ 
+ 		<para>This is an Active Directory specific option.</para>
+ 
++		<para>It is also possible to use the <option>--os-name</option>
++		or <option>--os-version</option> argument of the
++		<command>realm</command> command to override the default
++		values.</para>
++
+ 		<informalexample>
+ <programlisting language="js">
+ [active-directory]
+diff --git a/service/realm-adcli-enroll.c b/service/realm-adcli-enroll.c
+index 0c506f9..05947fa 100644
+--- a/service/realm-adcli-enroll.c
++++ b/service/realm-adcli-enroll.c
+@@ -139,13 +139,13 @@ realm_adcli_enroll_join_async (RealmDisco *disco,
+ 			g_ptr_array_add (args, (gpointer)computer_ou);
+ 	}
+ 
+-	os = realm_settings_value ("active-directory", "os-name");
++	os = realm_options_ad_specific (options, "os-name");
+ 	if (os != NULL && !g_str_equal (os, "")) {
+ 		g_ptr_array_add (args, "--os-name");
+ 		g_ptr_array_add (args, (gpointer)os);
+ 	}
+ 
+-	os = realm_settings_value ("active-directory", "os-version");
++	os = realm_options_ad_specific (options, "os-version");
+ 	if (os != NULL && !g_str_equal (os, "")) {
+ 		g_ptr_array_add (args, "--os-version");
+ 		g_ptr_array_add (args, (gpointer)os);
+diff --git a/service/realm-options.c b/service/realm-options.c
+index b9f59c6..bd804ea 100644
+--- a/service/realm-options.c
++++ b/service/realm-options.c
+@@ -180,3 +180,21 @@ realm_options_computer_name (GVariant *options,
+ 
+ 	return g_strdup (computer_name);
+ }
++
++const gchar *
++realm_options_ad_specific (GVariant *options,
++                           const gchar *option_name)
++{
++	const gchar *value = NULL;
++
++	if (options) {
++		if (!g_variant_lookup (options, option_name, "&s", &value))
++			value = NULL;
++	}
++
++	if (!value) {
++		value = realm_settings_value ("active-directory", option_name);
++	}
++
++	return g_strdup (value);
++}
+diff --git a/service/realm-options.h b/service/realm-options.h
+index e31cddc..7a1355e 100644
+--- a/service/realm-options.h
++++ b/service/realm-options.h
+@@ -44,6 +44,9 @@ gboolean       realm_options_check_domain_name        (const gchar *domain_name)
+ const gchar *  realm_options_computer_name           (GVariant *options,
+                                                        const gchar *realm_name);
+ 
++const gchar *  realm_options_ad_specific              (GVariant *options,
++                                                       const gchar *option_name);
++
+ G_END_DECLS
+ 
+ #endif /* __REALM_OPTIONS_H__ */
+diff --git a/service/realm-samba-enroll.c b/service/realm-samba-enroll.c
+index f2392a9..c81aed2 100644
+--- a/service/realm-samba-enroll.c
++++ b/service/realm-samba-enroll.c
+@@ -335,11 +335,11 @@ begin_join (GTask *task,
+ 		}
+ 	}
+ 
+-	os = realm_settings_value ("active-directory", "os-name");
++	os = realm_options_ad_specific(options, "os-name");
+ 	if (os != NULL && !g_str_equal (os, ""))
+ 		join->join_args[at++] = g_strdup_printf ("osName=%s", os);
+ 
+-	os = realm_settings_value ("active-directory", "os-version");
++	os = realm_options_ad_specific(options, "os-version");
+ 	if (os != NULL && !g_str_equal (os, ""))
+ 		join->join_args[at++] = g_strdup_printf ("osVer=%s", os);
+ 
+diff --git a/tools/realm-join.c b/tools/realm-join.c
+index 3685bb9..8e46c20 100644
+--- a/tools/realm-join.c
++++ b/tools/realm-join.c
+@@ -169,6 +169,8 @@ typedef struct {
+ 	gchar *user;
+ 	gchar *computer_ou;
+ 	gchar *computer_name;
++	gchar *os_name;
++	gchar *os_version;
+ 	gchar *client_software;
+ 	gchar *server_software;
+ 	gchar *membership_software;
+@@ -241,6 +243,8 @@ perform_join (RealmClient *client,
+ 
+ 	options = realm_build_options (REALM_DBUS_OPTION_COMPUTER_OU, args->computer_ou,
+ 	                               REALM_DBUS_OPTION_COMPUTER_NAME, args->computer_name,
++	                               REALM_DBUS_OPTION_OS_NAME, args->os_name,
++	                               REALM_DBUS_OPTION_OS_VERSION, args->os_version,
+ 	                               REALM_DBUS_OPTION_MEMBERSHIP_SOFTWARE, args->membership_software,
+ 	                               REALM_DBUS_OPTION_USER_PRINCIPAL, args->user_principal,
+ 	                               args->automatic_id_mapping_set ?
+@@ -288,6 +292,10 @@ realm_join (RealmClient *client,
+ 		  N_("Computer OU DN to join"), NULL },
+ 		{ "computer-name", 0, 0, G_OPTION_ARG_STRING, &args.computer_name,
+ 			N_("Use specific computer name instead of hostname"), NULL },
++		{ "os-name", 0, 0, G_OPTION_ARG_STRING, &args.os_name,
++			N_("Use specific operation system name"), NULL },
++		{ "os-version", 0, 0, G_OPTION_ARG_STRING, &args.os_version,
++			N_("Use specific operation system version"), NULL },
+ 		{ "client-software", 0, 0, G_OPTION_ARG_STRING, &args.client_software,
+ 		  N_("Use specific client software"), NULL },
+ 		{ "server-software", 0, 0, G_OPTION_ARG_STRING, &args.server_software,
+-- 
+2.7.4
+
