@@ -1,3 +1,31 @@
+0.16.1
+ * libsystemd build fix [#90519]
+ * Change default home directory to /home/%U@%D
+ * Add --automatic-id-mapping=no command line argument
+
+0.16.0
+ * Disable automatic AD joins by default [#89205]
+ * Validate text we receive from LDAP
+ * Prefer adcli for AD joins
+ * Remove hard dependency on PackageKit
+ * Fix crash when empty password is used with realm client
+
+0.15.2
+ * Fix PackageKit installation issue
+ * Remove our copy of valgrind.h
+ * Build fixes and tweaks
+
+0.15.1
+ * Build fixes for PackageKit changes [#76800
+ * Correct the polkit policy for non-desktop users [#78273]
+ * Don't crash if missing full_name_format in sssd.conf
+
+0.15.0
+ * Depend on Glib 2.36 or later
+ * Use safe printf when formatting sssd.conf full_name_format
+ * Fix logic issue when testing for EAGAIN [#71774]
+ * Build fixes
+
 0.14.6
  * Set 'kerberos method = system keytab' in smb.conf properly [#69037]
  * Limit Netbios name to 15 chars when joining AD domain [#69016]

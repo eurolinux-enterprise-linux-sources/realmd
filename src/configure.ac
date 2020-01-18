@@ -1,13 +1,23 @@
 AC_PREREQ(2.63)
 
-AC_INIT([realmd], [0.14.6],
+AC_INIT([realmd], [0.16.1],
         [http://bugs.freedesktop.org/enter_bug.cgi?product=realmd],
         [realmd])
 
 # -----------------------------------------------------------------------------
+# Versions
+
+GLIB_REQ=2.36.0
+GLIB_MIN=GLIB_VERSION_2_36
+GLIB_MAX=GLIB_VERSION_2_36
+
+INTLTOOL_REQ=0.35.0
+
+# -----------------------------------------------------------------------------
 
 AC_CONFIG_MACRO_DIR([build/m4])
-AM_INIT_AUTOMAKE([1.11 tar-ustar foreign -Wno-portability])
+AC_CONFIG_AUX_DIR([build])
+AM_INIT_AUTOMAKE([1.11 tar-ustar foreign -Wno-portability subdir-objects])
 AM_SANITY_CHECK
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_SRCDIR([service/realm-daemon.c])
@@ -52,7 +62,7 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_RANLIB
-IT_PROG_INTLTOOL([0.35.0])
+IT_PROG_INTLTOOL($INTLTOOL_REQ)
 AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
 
 GETTEXT_PACKAGE=realmd
@@ -64,18 +74,12 @@ AM_GLIB_GNU_GETTEXT
 # GLib
 
 PKG_CHECK_MODULES(GLIB,
-	glib-2.0 >= 2.32.0
-	gio-2.0 >= 2.32.0
+	glib-2.0 >= $GLIB_REQ
+	gio-2.0
 	gio-unix-2.0)
+GLIB_CFLAGS="$GLIB_CFLAGS -DGLIB_VERSION_MIN_REQUIRED=$GLIB_MIN -DGLIB_VERSION_MAX_ALLOWED=$GLIB_MAX"
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
-
-# --------------------------------------------------------------------
-# PackageKit
-
-PKG_CHECK_MODULES(PACKAGEKIT, packagekit-glib2)
-AC_SUBST(PACKAGEKIT_CFLAGS)
-AC_SUBST(PACKAGEKIT_LIBS)
 
 # --------------------------------------------------------------------
 # PolicyKit
@@ -114,7 +118,8 @@ AC_ARG_WITH(systemd-journal,
 
 if test "$with_systemd_journal" != "no"; then
 	AC_DEFINE_UNQUOTED(WITH_JOURNAL, 1, [Use systemd's journal])
-	PKG_CHECK_MODULES(SYSTEMD_JOURNAL, libsystemd-journal)
+	PKG_CHECK_MODULES(SYSTEMD_JOURNAL, [libsystemd],,
+	                  [PKG_CHECK_MODULES(SYSTEMD_JOURNAL, [libsystemd-journal])])
 	with_systemd_journal="yes"
 fi
 
@@ -374,18 +379,9 @@ AC_SUBST(cachedir)
 
 AC_CONFIG_FILES([
 	Makefile
-	build/Makefile
-	dbus/Makefile
-	doc/Makefile
-	doc/internals/Makefile
-	doc/manual/Makefile
-	doc/website/Makefile
 	doc/version.xml
 	po/Makefile.in
 	po/Makefile
-	service/Makefile
-	tests/Makefile
-	tools/Makefile
 ])
 AC_OUTPUT
 

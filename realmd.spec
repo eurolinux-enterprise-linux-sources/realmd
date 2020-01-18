@@ -1,20 +1,39 @@
 Name:		realmd
-Version:	0.14.6
-Release:	6%{?dist}
+Version:	0.16.1
+Release:	11%{?dist}
 Summary:	Kerberos realm enrollment service
 License:	LGPLv2+
 URL:		http://cgit.freedesktop.org/realmd/realmd/
 Source0:	http://www.freedesktop.org/software/realmd/releases/realmd-%{version}.tar.gz
-Patch0:		ipa-packages.patch
-Patch1:		oddjob-start.patch
-Patch2:		safe-printf.patch
-Patch3:		missing-fqname.patch
 
+Patch0:         ipa-packages.patch
+Patch2:		remove-spurious-print.patch
+Patch3:         increase-packagekit-timeout.patch
+Patch4:         dns-domain-name-liberal.patch
+
+Patch11:        install-diagnostic.patch
+Patch12:        computer-ou.patch
+Patch13:        duplicate-test-path.patch
+
+Patch20:        samba-by-default.patch
+Patch21:        Fix-invalid-unrefs-on-realm_invocation_get_cancellab.patch
+Patch22:        0001-Support-manually-setting-computer-name.patch
+Patch23:        0002-Add-computer-name-support-to-realm-join-CLI.patch
+Patch24:        0003-Add-documentation-for-computer-name-setting.patch
+Patch25:        0001-Make-DBus-aware-of-systemd.patch
+Patch26:        0001-Add-os-name-and-os-version-command-line-options.patch
+Patch27:        0001-doc-add-computer-name-to-realm-man-page.patch
+Patch28:        0001-Fix-man-page-reference-in-systemd-service-file.patch
+Patch29:        0001-Use-current-idmap-options-for-smb.conf.patch
+Patch30:        0001-Find-NetBIOS-name-in-keytab-while-leaving.patch
+Patch31:        0001-Fix-issues-found-by-Coverity.patch
+
+BuildRequires:  automake
+BuildRequires:  autoconf
 BuildRequires:	intltool pkgconfig
 BuildRequires:	gettext-devel
 BuildRequires:	glib2-devel >= 2.32.0
 BuildRequires:	openldap-devel
-BuildRequires:	PackageKit-glib-devel
 BuildRequires:	polkit-devel
 BuildRequires:	krb5-devel
 BuildRequires:	systemd-devel
@@ -42,11 +61,29 @@ applications that use %{name}.
 %prep
 %setup -q
 %patch0 -p1
-%patch1 -p1
 %patch2 -p1
 %patch3 -p1
+%patch4 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch20 -p1
+%patch21 -p1
+%patch22 -p1
+%patch23 -p1
+%patch24 -p1
+%patch25 -p1
+%patch26 -p1
+%patch27 -p1
+%patch28 -p1
+%patch29 -p1
+%patch30 -p1
+%patch31 -p1
 
 %build
+aclocal
+automake --add-missing
+autoconf
 %configure --disable-silent-rules
 make %{?_smp_mflags}
 
@@ -58,9 +95,17 @@ make install DESTDIR=%{buildroot}
 
 %find_lang realmd
 
-%clean
+%post
+%systemd_post realmd.service
+
+%preun
+%systemd_preun realmd.service
+
+%postun
+%systemd_postun_with_restart realmd.service
 
 %files -f realmd.lang
+%doc AUTHORS COPYING NEWS README
 %{_sysconfdir}/dbus-1/system.d/org.freedesktop.realmd.conf
 %{_sbindir}/realm
 %dir %{_libdir}/realmd
@@ -70,17 +115,72 @@ make install DESTDIR=%{buildroot}
 %{_unitdir}/realmd.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.realmd.service
 %{_datadir}/polkit-1/actions/org.freedesktop.realmd.policy
-%doc AUTHORS COPYING ChangeLog NEWS README
 %{_mandir}/man8/realm.8.gz
 %{_mandir}/man5/realmd.conf.5.gz
 %{_localstatedir}/cache/realmd/
 
 %files devel-docs
 %doc %{_datadir}/doc/realmd/
+%doc ChangeLog
 
 %changelog
-* Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 0.14.6-6
-- Mass rebuild 2014-01-24
+* Tue Aug 21 2018 Sumit Bose <sbose@redhat.com> - 0.16.1-11
+Improve fix for rhbz#1370457 and fix Coverity issues
+- Resolves: rhbz#1370457
+
+* Thu Jun 14 2018 Sumit Bose <sbose@redhat.com> - 0.16.1-10
+Use current Samba options and read NetBIOS name from keytab
+- Resolves: rhbz#1484072
+- Resolves: rhbz#1370457
+
+* Wed Sep 07 2016 Sumit Bose <sbose@redhat.com> - 0.16.1-9
+Rebuild to fix wrong doc path
+- Resolves: rhbz#1360702
+
+* Wed Jul 27 2016 Sumit Bose <sbose@redhat.com> - 0.16.1-8
+Fix man page reference in systemd service file
+- Resolves: rhbz#1360702
+
+* Mon Jul 25 2016 Sumit Bose <sbose@redhat.com> - 0.16.1-7
+doc: add computer-name to realm man page
+- Related: rhbz#1293390
+
+* Tue Jun 28 2016 Sumit Bose <sbose@redhat.com> - 0.16.1-6
+- Resolves: rhbz#1258745
+- Resolves: rhbz#1258488
+- Resolves: rhbz#1267563
+- Resolves: rhbz#1293390
+- Resolves: rhbz#1273924
+- Resolves: rhbz#1274368
+- Resolves: rhbz#1291924
+
+* Fri Oct 16 2015 Stef Walter <stefw@redhat.com> - 0.16.1-5
+- Revert 0.16.1-4
+- Use samba by default
+- Resolves: rhbz#1271618
+
+* Fri Sep 11 2015 Stef Walter <stefw@redhat.com> - 0.16.1-4
+- Fix regressions in 0.16.x releases
+- Resolves: rhbz#1258745
+- Resolves: rhbz#1258488
+
+* Fri Jul 31 2015 Stef Walter <stefw@redhat.com> - 0.16.1-3
+- Fix regression accepting DNS domain names
+- Resolves: rhbz#1243771
+
+* Fri Jul 24 2015 Stef Walter <stefw@redhat.com> - 0.16.1-2
+- Fix discarded patch: ipa-packages.patch
+
+* Tue Jul 14 2015 Stef Walter <stefw@redhat.com> - 0.16.1-1
+- Updated to upstream 0.16.1
+- Resolves: rhbz#1241832
+- Resolves: rhbz#1230941
+
+* Tue Apr 14 2015 Stef Walter <stefw@redhat.com> - 0.16.0-1
+- Updated to upstream 0.16.0
+- Resolves: rhbz#1174911
+- Resolves: rhbz#1142191
+- Resolves: rhbz#1142148
 
 * Fri Jan 10 2014 Stef Walter <stefw@redhat.com> - 0.14.6-5
 - Don't crash when full_name_format is not in sssd.conf [#1051033]

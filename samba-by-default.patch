@@ -1,0 +1,48 @@
+From 36e35c860cebc5e3f3d2199742c7f46d5ef7b778 Mon Sep 17 00:00:00 2001
+From: Stef Walter <stefw@redhat.com>
+Date: Fri, 16 Oct 2015 11:41:14 +0200
+Subject: [PATCH] Revert "service: Prefer adcli over samba for most credential
+ types"
+
+This reverts commit 70878dec6e23226ab25f731654ab53cc0e7b11c3.
+---
+ service/realm-sssd-ad.c | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/service/realm-sssd-ad.c b/service/realm-sssd-ad.c
+index c7ffe8a..39fcf81 100644
+--- a/service/realm-sssd-ad.c
++++ b/service/realm-sssd-ad.c
+@@ -343,13 +343,26 @@ parse_join_options (JoinClosure *join,
+ 		}
+ 
+ 	/*
+-	 * For other valid types of credentials we prefer adcli.
++	 * If we are enrolling with a ccache, then prefer to use adcli over samba.
++	 * There have been some strange corner case problems when using samba with
++	 * a ccache.
+ 	 */
+-	} else if (cred->type == REALM_CREDENTIAL_CCACHE ||
+-	           (cred->type == REALM_CREDENTIAL_PASSWORD && cred->owner == REALM_CREDENTIAL_OWNER_ADMIN)) {
++	} else if (cred->type == REALM_CREDENTIAL_CCACHE) {
+ 		if (!software)
+ 			software = REALM_DBUS_IDENTIFIER_ADCLI;
+ 
++	/*
++	 * For other supported enrolling credentials, we support either adcli or
++	 * samba. But since adcli is pretty immature at this point, we use samba
++	 * by default. Samba falls over with hostnames that are not perfectly
++	 * specified, so use adcli there.
++	 */
++	} else if (cred->type == REALM_CREDENTIAL_PASSWORD && cred->owner == REALM_CREDENTIAL_OWNER_ADMIN) {
++		if (!software && join->disco->explicit_server)
++			software = REALM_DBUS_IDENTIFIER_ADCLI;
++		else if (!software)
++			software = REALM_DBUS_IDENTIFIER_SAMBA;
++
+ 	/* It would be odd to get here */
+ 	} else {
+ 		g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+-- 
+2.5.0
+

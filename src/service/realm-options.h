@@ -24,7 +24,9 @@ G_BEGIN_DECLS
 gboolean       realm_options_manage_system            (GVariant *options,
                                                        const gchar *realm_name);
 
-gboolean       realm_options_automatic_install        (GVariant *options);
+gboolean       realm_options_automatic_install        (void);
+
+gboolean       realm_options_automatic_join           (const gchar *realm_name);
 
 const gchar *  realm_options_computer_ou              (GVariant *options,
                                                        const gchar *realm_name);
@@ -32,7 +34,8 @@ const gchar *  realm_options_computer_ou              (GVariant *options,
 const gchar *  realm_options_user_principal           (GVariant *options,
                                                        const gchar *realm_name);
 
-gboolean       realm_options_automatic_mapping        (const gchar *realm_name);
+gboolean       realm_options_automatic_mapping        (GVariant *options,
+						       const gchar *realm_name);
 
 gboolean       realm_options_qualify_names            (const gchar *realm_name);
 
