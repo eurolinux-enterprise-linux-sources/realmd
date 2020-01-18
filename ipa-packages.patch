@@ -10,4 +10,4 @@ index da2de55..856b36d 100644
 +ipa-client = /usr/sbin/ipa-client-install
  
  [commands]
- winbind-enable-logins = /usr/bin/sh -c "/usr/sbin/authconfig --update --enablewinbind --enablewinbindauth --enablemkhomedir --nostart && /usr/bin/systemctl enable oddjobd.service"
+ winbind-enable-logins = /usr/bin/sh -c "/usr/sbin/authconfig --update --enablewinbind --enablewinbindauth --enablemkhomedir --nostart && /usr/bin/systemctl enable oddjobd.service && /usr/bin/systemctl start oddjobd.service"

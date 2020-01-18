@@ -208,13 +208,14 @@ automatic-install = no
 		<informalexample>
 <programlisting language="js">
 [users]
-default-home = /home/%D/%U
+default-home = /home/%U@%D
 # default-home = /nfs/home/%D-%U
+# default-home = /home/%D/%U
 
 </programlisting>
 		</informalexample>
 
-		<para>The default setting for this is <option>/home/%D/%U</option>. The
+		<para>The default setting for this is <option>/home/%U@%D</option>. The
 		<option>%D</option> format is replaced by the domain name. The <option>%U</option>
 		format is replaced by the user name.</para>
 
@@ -333,6 +334,26 @@ computer-ou = OU=Linux Computers,DC=domain,DC=example,DC=com
 <programlisting language="js">
 [domain.example.com]
 user-principal = yes
+</programlisting>
+		</informalexample>
+	</listitem>
+	</varlistentry>
+
+	<varlistentry>
+	<term><option>automatic-join</option></term>
+	<listitem>
+		<para>This option only applies to Active Directory realms. This option
+		is off by default. In Active Directory domains, a computer account can
+		be preset with a known computer account password. This can be used for
+		automatic joins without authentication.</para>
+
+		<para>When automatic joins are used there is no mutual authentication
+		between the machine and the domain during the join process.</para>
+
+		<informalexample>
+<programlisting>
+[domain.example.com]
+automatic-join = yes
 </programlisting>
 		</informalexample>
 	</listitem>

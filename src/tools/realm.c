@@ -17,8 +17,6 @@
 #include "realm.h"
 #include "realm-dbus-constants.h"
 
-#include "valgrind/valgrind.h"
-
 #include <glib.h>
 #include <glib/gi18n.h>
 #include <glib-object.h>
@@ -85,7 +83,7 @@ realm_handle_error (GError *error,
 
 #ifdef WITH_JOURNAL
 	remote = error ? g_dbus_error_get_remote_error (error) : NULL;
-	if (diag_hint && realm_operation_id && !realm_verbose &&
+	if (error && diag_hint && realm_operation_id && !realm_verbose &&
 	    g_strcmp0 (remote, REALM_DBUS_ERROR_NOT_AUTHORIZED) != 0) {
 		g_printerr ("See: journalctl REALMD_OPERATION=%s\n",
 		            realm_operation_id);
@@ -131,7 +129,8 @@ realm_build_options (const gchar *first,
 	opts = g_ptr_array_new ();
 	while (first != NULL) {
 		option = NULL;
-		if (g_str_equal (first, "groups")) {
+		if (g_str_equal (first, "groups") ||
+		    g_str_equal (first, REALM_DBUS_OPTION_AUTOMATIC_ID_MAPPING)) {
 			bvalue = va_arg (va, gboolean);
 			option = g_variant_new ("{sv}", first, g_variant_new_boolean (bvalue));
 		} else {
@@ -160,6 +159,31 @@ realm_build_options (const gchar *first,
 	g_ptr_array_free (opts, TRUE);
 
 	return options;
+}
+
+gboolean
+realm_parse_boolean (const gchar *option,
+	             const gchar *value,
+	             gboolean defalt,
+	             gboolean *result,
+	             GError **error)
+{
+	if (!value || g_str_equal (value, "")) {
+		*result = defalt;
+		return TRUE;
+	} else if (g_ascii_strcasecmp (value, "yes") == 0 ||
+	           g_ascii_strcasecmp (value, "true") == 0) {
+		*result = TRUE;
+		return TRUE;
+	} else if (g_ascii_strcasecmp (value, "no") == 0 ||
+	           g_ascii_strcasecmp (value, "false") == 0) {
+		*result = FALSE;
+		return TRUE;
+	} else {
+		g_set_error (error, G_OPTION_ERROR, G_OPTION_ERROR_BAD_VALUE,
+		             _("Invalid value for %s option: %s"), option, value);
+		return FALSE;
+	}
 }
 
 gboolean

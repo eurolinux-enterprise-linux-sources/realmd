@@ -1,0 +1,196 @@
+From e368c5a42656a687e6b726978752eb4abf6503d0 Mon Sep 17 00:00:00 2001
+From: Stef Walter <stefw@redhat.com>
+Date: Fri, 31 Jul 2015 12:53:04 +0200
+Subject: [PATCH 1/3] Be more liberal on what we accept as a domain name
+
+Make the checks on what we accept as a domain name more liberal
+for values coming in from the network.
+
+DNS Domain names are pretty liberal (internet domain names
+are more restrictive) See RFC 2181 section 11
+
+http://www.ietf.org/rfc/rfc2181.txt
+
+However we cannot consume names with whitespace and problematic
+punctuation, due to the various programs that parse the
+configuration files we set up.
+---
+ service/realm-disco-mscldap.c |  9 +++------
+ service/realm-disco-rootdse.c | 15 +++++++--------
+ service/realm-options.c       | 31 +++++++++++++++++++++++++++++++
+ service/realm-options.h       |  2 ++
+ 4 files changed, 43 insertions(+), 14 deletions(-)
+
+diff --git a/service/realm-disco-mscldap.c b/service/realm-disco-mscldap.c
+index 1ed4063..d3d3c10 100644
+--- a/service/realm-disco-mscldap.c
++++ b/service/realm-disco-mscldap.c
+@@ -17,6 +17,7 @@
+ #include "realm-dbus-constants.h"
+ #include "realm-disco-mscldap.h"
+ #include "realm-ldap.h"
++#include "realm-options.h"
+ 
+ #include <glib/gi18n.h>
+ 
+@@ -40,8 +41,6 @@ typedef struct {
+ #define HOST_NAME_MAX 255
+ #endif
+ 
+-#define DOMAIN_NAME_VALID "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-."
+-
+ static void
+ closure_free (gpointer data)
+ {
+@@ -100,21 +99,19 @@ get_string (guchar *beg,
+             guchar **at)
+ {
+ 	gchar buffer[HOST_NAME_MAX];
+-	gsize len;
+ 	int n;
+ 
+ 	n = dn_expand (beg, end, *at, buffer, sizeof (buffer));
+ 	if (n < 0)
+ 		return NULL;
+ 
+-	len = strlen (buffer);
+-	if (strspn (buffer, DOMAIN_NAME_VALID) != len) {
++	if (!realm_options_check_domain_name (buffer)) {
+ 		g_message ("received invalid NetLogon string characters");
+ 		return NULL;
+ 	}
+ 
+ 	(*at) += n;
+-	return g_strndup (buffer, len);
++	return g_strdup (buffer);
+ }
+ 
+ static gboolean
+diff --git a/service/realm-disco-rootdse.c b/service/realm-disco-rootdse.c
+index 1a80d98..3100650 100644
+--- a/service/realm-disco-rootdse.c
++++ b/service/realm-disco-rootdse.c
+@@ -19,13 +19,12 @@
+ #include "realm-disco-mscldap.h"
+ #include "realm-disco-rootdse.h"
+ #include "realm-ldap.h"
++#include "realm-options.h"
+ 
+ #include <glib/gi18n.h>
+ 
+ #include <resolv.h>
+ 
+-#define DOMAIN_NAME_VALID "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-."
+-
+ typedef struct _Closure Closure;
+ 
+ struct _Closure {
+@@ -92,7 +91,7 @@ static gchar *
+ entry_get_attribute (LDAP *ldap,
+                      LDAPMessage *entry,
+                      const gchar *field,
+-                     const gchar *valid)
++                     gboolean domain_name)
+ {
+ 	struct berval **bvs = NULL;
+ 	gchar *value = NULL;
+@@ -102,8 +101,8 @@ entry_get_attribute (LDAP *ldap,
+ 
+ 	if (bvs && bvs[0]) {
+ 		value = g_strndup (bvs[0]->bv_val, bvs[0]->bv_len);
+-		if (valid) {
+-		       if (strspn (value, valid) != bvs[0]->bv_len) {
++		if (domain_name) {
++		       if (!realm_options_check_domain_name (value)) {
+ 			       g_free (value);
+ 			       g_message ("Invalid value in LDAP %s field", field);
+ 			       value = NULL;
+@@ -155,7 +154,7 @@ result_krb_realm (GTask *task,
+ 	entry = ldap_first_entry (ldap, message);
+ 
+ 	g_free (clo->disco->kerberos_realm);
+-	clo->disco->kerberos_realm = entry_get_attribute (ldap, entry, "cn", DOMAIN_NAME_VALID);
++	clo->disco->kerberos_realm = entry_get_attribute (ldap, entry, "cn", TRUE);
+ 
+ 	g_debug ("Found realm: %s", clo->disco->kerberos_realm);
+ 
+@@ -211,7 +210,7 @@ result_domain_info (GTask *task,
+ 
+ 	/* What is the domain name? */
+ 	g_free (clo->disco->domain_name);
+-	clo->disco->domain_name = entry_get_attribute (ldap, entry, "associatedDomain", DOMAIN_NAME_VALID);
++	clo->disco->domain_name = entry_get_attribute (ldap, entry, "associatedDomain", TRUE);
+ 
+ 	g_debug ("Got associatedDomain: %s", clo->disco->domain_name);
+ 
+@@ -310,7 +309,7 @@ result_root_dse (GTask *task,
+ 	entry = ldap_first_entry (ldap, message);
+ 
+ 	/* Parse out the default naming context */
+-	clo->default_naming_context = entry_get_attribute (ldap, entry, "defaultNamingContext", NULL);
++	clo->default_naming_context = entry_get_attribute (ldap, entry, "defaultNamingContext", FALSE);
+ 
+ 	g_debug ("Got defaultNamingContext: %s", clo->default_naming_context);
+ 
+diff --git a/service/realm-options.c b/service/realm-options.c
+index 53266f6..bba3ee4 100644
+--- a/service/realm-options.c
++++ b/service/realm-options.c
+@@ -18,6 +18,8 @@
+ #include "realm-options.h"
+ #include "realm-settings.h"
+ 
++#include <string.h>
++
+ gboolean
+ realm_options_automatic_install (void)
+ {
+@@ -128,3 +130,32 @@ realm_options_qualify_names (const gchar *realm_name)
+ 
+ 	return qualify;
+ }
++
++gboolean
++realm_options_check_domain_name (const gchar *name)
++{
++	/*
++	 * DNS Domain names are pretty liberal (internet domain names
++	 * are more restrictive) See RFC 2181 section 11
++	 *
++	 * http://www.ietf.org/rfc/rfc2181.txt
++	 *
++	 * However we cannot consume names with whitespace and problematic
++	 * punctuation, due to the various programs that parse the
++	 * configuration files we set up.
++	 */
++
++	gsize i, len;
++	static const gchar *invalid = "=[]:";
++
++	g_return_val_if_fail (name != NULL, FALSE);
++
++	for (i = 0, len = strlen (name); i < len; i++) {
++		if (name[i] <= ' ')
++			return FALSE;
++		if (strchr (invalid, name[i]))
++			return FALSE;
++	}
++
++	return TRUE;
++}
+diff --git a/service/realm-options.h b/service/realm-options.h
+index 52dc6ff..4890cba 100644
+--- a/service/realm-options.h
++++ b/service/realm-options.h
+@@ -39,6 +39,8 @@ gboolean       realm_options_automatic_mapping        (GVariant *options,
+ 
+ gboolean       realm_options_qualify_names            (const gchar *realm_name);
+ 
++gboolean       realm_options_check_domain_name        (const gchar *domain_name);
++
+ G_END_DECLS
+ 
+ #endif /* __REALM_OPTIONS_H__ */
+-- 
+2.4.3
+
